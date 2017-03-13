@@ -24,7 +24,7 @@ http://www.springframework.org/schema/security http://www.springframework.org/sc
 			<tls:key-store path="${https-example.keystore.path}" password="${https-example.keystore.password}" keyPassword="${https-example.keystore.key.password}"/>
 		</tls:context>
 	</http:listener-config>
-	<context:property-placeholder location="https-example.properties"/>
+	<context:property-placeholder location="https-example.properties,https-example.${mule.env}.properties"/>
 
 	<spring:beans>
 		<ss:authentication-manager alias="authenticationManager">
