@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:context="http://www.springframework.org/schema/context" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:mule-ss="http://www.mulesoft.org/schema/mule/spring-security"
+    xmlns:ss="http://www.springframework.org/schema/security"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/spring-security http://www.mulesoft.org/schema/mule/spring-security/current/mule-spring-security.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd
+http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-current.xsd
+http://www.mulesoft.org/schema/mule/spring-security http://www.mulesoft.org/schema/mule/spring-security/3.1/mule-spring-security.xsd
+http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security-3.0.xsd">
+	<http:listener-config name="HTTP_Listener_Configuration" 
+    		protocol="HTTPS" 
+    		host="${https-example.http.listener.host}" 
+    		port="${https-example.http.listener.port}" 
+    		basePath="example" 
+    		doc:name="HTTP Listener Configuration">
+		<tls:context enabledProtocols="TLSv1.1,TLSv1.2">
+            <tls:trust-store />
+			<tls:key-store path="${https-example.keystore.path}" password="${https-example.keystore.password}" keyPassword="${https-example.keystore.key.password}"/>
+		</tls:context>
+	</http:listener-config>
+	<context:property-placeholder location="https-example.properties"/>
+
+	<spring:beans>
+		<ss:authentication-manager alias="authenticationManager">
+			<ss:authentication-provider>
+				<ss:user-service id="userService">
+					<ss:user name="user" password="password" authorities="ROLE_ADMIN" />
+					<ss:user name="anon" password="anon" authorities="ROLE_ANON" />
+				</ss:user-service>
+			</ss:authentication-provider>
+		</ss:authentication-manager>
+	</spring:beans>
+
+	<mule-ss:security-manager>
+		<mule-ss:delegate-security-provider name="memory-provider" delegate-ref="authenticationManager" />
+	</mule-ss:security-manager>
+
+	<flow name="mule-https-with-authentication-exampleFlow">
+		<http:listener config-ref="HTTP_Listener_Configuration" path="/auth" doc:name="HTTP"/>
+		<http:basic-security-filter realm="mule-realm" doc:name="Security Filter"/>
+        <logger level="INFO" doc:name="Log request" message="Authenticated request!"/>    
+		<set-payload value="Hello authenticated user!" doc:name="Set Payload"/>
+	</flow>
+</mule>
