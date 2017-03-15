@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:context="http://www.springframework.org/schema/context" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+<mule xmlns:apikit="http://www.mulesoft.org/schema/mule/apikit" xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:context="http://www.springframework.org/schema/context" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
 	xmlns:spring="http://www.springframework.org/schema/beans" 
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xmlns:mule-ss="http://www.mulesoft.org/schema/mule/spring-security"
@@ -12,7 +12,9 @@ http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/htt
 http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd
 http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-current.xsd
 http://www.mulesoft.org/schema/mule/spring-security http://www.mulesoft.org/schema/mule/spring-security/3.1/mule-spring-security.xsd
-http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security-3.0.xsd">
+http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security-3.0.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/apikit http://www.mulesoft.org/schema/mule/apikit/current/mule-apikit.xsd">
 	<http:listener-config name="HTTP_Listener_Configuration" 
     		protocol="HTTPS" 
     		host="${https-example.http.listener.host}" 
@@ -41,10 +43,30 @@ http://www.springframework.org/schema/security http://www.springframework.org/sc
 		<mule-ss:delegate-security-provider name="memory-provider" delegate-ref="authenticationManager" />
 	</mule-ss:security-manager>
 
-	<flow name="mule-https-with-authentication-exampleFlow">
+	<flow name="mule-https-with-authentication-example-Auth-with-200">
 		<http:listener config-ref="HTTP_Listener_Configuration" path="/auth" doc:name="HTTP"/>
-		<http:basic-security-filter realm="mule-realm" doc:name="Security Filter"/>
-        <logger level="INFO" doc:name="Log request" message="Authenticated request!"/>    
-		<set-payload value="Hello authenticated user!" doc:name="Set Payload"/>
+        <flow-ref name="mule-https-with-authentication-example-Auth-request" doc:name="mule-https-with-authentication-example-Auth-request"/>
+		<set-payload value="#[[ 'message': 'Hello authenticated user!' ]]" doc:name="Set Payload"/>
+        <json:object-to-json-transformer doc:name="Object to JSON"/>
+        <exception-strategy ref="api-apiKitGlobalExceptionMapping" doc:name="Reference Exception Strategy"/>
 	</flow>
+	<flow name="mule-https-with-authentication-example-Auth-with-500">
+		<http:listener config-ref="HTTP_Listener_Configuration" path="/auth/err/500" doc:name="HTTP"/>
+        <flow-ref name="mule-https-with-authentication-example-Auth-request" doc:name="mule-https-with-authentication-example-Auth-request"/>
+        <set-property propertyName="http.status" value="500" doc:name="http status 500"/>
+		<set-payload value="#[[ 'message': 'An error was encountered: you are requesting a page always returning an error' ]]" doc:name="Set Payload"/>
+        <json:object-to-json-transformer doc:name="Object to JSON"/>
+        <exception-strategy ref="api-apiKitGlobalExceptionMapping" doc:name="Reference Exception Strategy"/>
+	</flow>
+	<sub-flow name="mule-https-with-authentication-example-Auth-request">
+        <http:basic-security-filter realm="mule-realm" doc:name="Security Filter"/>
+        <logger message="Authenticated request: #[payload]" level="INFO" doc:name="Log request"/>
+    </sub-flow>
+    <apikit:mapping-exception-strategy name="api-apiKitGlobalExceptionMapping">
+        <apikit:mapping statusCode="401">
+            <apikit:exception value="java.lang.Exception" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property" />
+            <set-payload value="{ &quot;message&quot;: &quot;Authentication failure.&quot; }" doc:name="Set Payload" />
+        </apikit:mapping>
+    </apikit:mapping-exception-strategy>
 </mule>
